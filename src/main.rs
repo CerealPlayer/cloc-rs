@@ -8,16 +8,21 @@ use clap::Parser;
 
 use cloc_rs::{collect_files_with_extensions, is_import_line};
 
+/// Count lines of code by extension.
 #[derive(Parser)]
 #[command(version, about = "Count lines of code by extension")]
 struct Cli {
-    // Comma-separated file extensions, for example: rs,ts,js
+    /// Comma-separated file extensions (example: `rs,ts,js`).
     pattern: String,
 
-    // Target directory to scan (relative to current directory if not absolute)
+    /// Target directory to scan.
+    ///
+    /// If omitted, uses the current working directory.
     path: Option<PathBuf>,
 
-    // Comma-separated directory names to exclude recursively
+    /// Comma-separated directory names to exclude recursively.
+    ///
+    /// Example: `--exclude node_modules,test`
     #[arg(long = "exclude", value_delimiter = ',')]
     exclude: Vec<String>,
 }
