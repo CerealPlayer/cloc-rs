@@ -1,12 +1,28 @@
 use std::{
-    env::{args, current_dir},
+    env::current_dir,
     fs::read_to_string,
     path::PathBuf,
 };
 
+use clap::Parser;
+
 use cloc_rs::{collect_files_with_extensions, is_import_line};
 
+#[derive(Parser)]
+#[command(version, about = "Count lines of code by extension")]
 struct Cli {
+    // Comma-separated file extensions, for example: rs,ts,js
+    pattern: String,
+
+    // Target directory to scan (relative to current directory if not absolute)
+    path: Option<PathBuf>,
+
+    // Comma-separated directory names to exclude recursively
+    #[arg(long = "exclude", value_delimiter = ',')]
+    exclude: Vec<String>,
+}
+
+struct AppArgs {
     pattern: String,
     path: PathBuf,
     excluded_dirs: Vec<String>,
@@ -20,53 +36,18 @@ struct LineCounts {
 }
 
 fn main() {
-    let cli_args: Vec<String> = args().skip(1).collect();
-    let pattern_arg = cli_args
-        .first()
-        .cloned()
-        .expect("File extension pattern missing");
-
-    let mut index = 1;
-    let path_arg = if cli_args.get(index).is_some_and(|arg| !arg.starts_with("--")) {
-        let value = cli_args[index].clone();
-        index += 1;
-        Some(value)
-    } else {
-        None
-    };
-
-    let mut excluded_dirs: Vec<String> = Vec::new();
-    while index < cli_args.len() {
-        match cli_args[index].as_str() {
-            "--exclude" => {
-                index += 1;
-                let exclude_list = cli_args
-                    .get(index)
-                    .expect("Missing value for --exclude. Example: --exclude node_modules,test");
-
-                excluded_dirs = exclude_list
-                    .split(',')
-                    .map(str::trim)
-                    .filter(|name| !name.is_empty())
-                    .map(str::to_string)
-                    .collect();
-            }
-            unknown => panic!("Unknown argument: {unknown}"),
-        }
-
-        index += 1;
-    }
+    let cli = Cli::parse();
 
     let mut target_dir = current_dir().expect("Failed to get current directory");
 
-    if let Some(p) = path_arg {
+    if let Some(p) = cli.path {
         target_dir.push(p)
     }
 
-    let args = Cli {
-        pattern: pattern_arg,
+    let args = AppArgs {
+        pattern: cli.pattern,
         path: target_dir,
-        excluded_dirs,
+        excluded_dirs: cli.exclude,
     };
 
     println!(
