@@ -1,8 +1,10 @@
 use std::{
     env::{args, current_dir},
-    fs::read_dir,
+    fs::read_to_string,
     path::PathBuf,
 };
+
+use cloc_rs::collect_files_with_extensions;
 
 struct Cli {
     pattern: String,
@@ -29,23 +31,25 @@ fn main() {
     );
 
     let target_extensions: Vec<&str> = args.pattern.split(",").collect();
-
-    let dir = read_dir(args.path).expect("Couldn't read target dir");
-    let files_with_ext: Vec<PathBuf> = dir
-        .filter_map(|dir| {
-            let entry = dir.ok()?;
-            let path = entry.path();
-
-            if target_extensions.contains(&path.extension()?.to_str()?) {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let files_with_ext = collect_files_with_extensions(&args.path, &target_extensions);
 
     println!(
         "Found the following files with the selected extensions: {:?}",
         files_with_ext
     );
+
+    let total_lines: usize = files_with_ext
+        .iter()
+        .filter_map(|path| read_to_string(path).ok())
+        .map(|content| content.lines().count())
+        .sum();
+
+    files_with_ext.iter().for_each(|f| {
+        let content = read_to_string(f);
+        if let Ok(text) = content {
+            println!("File with {} lines", text.lines().count())
+        }
+    });
+
+    println!("Total lines of code: {}", total_lines);
 }
