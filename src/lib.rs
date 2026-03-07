@@ -8,7 +8,11 @@ pub fn is_import_line(extension: &str, trimmed_line: &str) -> bool {
     }
 }
 
-pub fn collect_files_with_extensions(root: &Path, target_extensions: &[&str]) -> Vec<PathBuf> {
+pub fn collect_files_with_extensions(
+    root: &Path,
+    target_extensions: &[&str],
+    excluded_dirs: &[&str],
+) -> Vec<PathBuf> {
     let mut files = Vec::new();
     let mut dirs_to_visit = vec![root.to_path_buf()];
 
@@ -18,6 +22,15 @@ pub fn collect_files_with_extensions(root: &Path, target_extensions: &[&str]) ->
                 let path = entry.path();
 
                 if path.is_dir() {
+                    let dir_name = path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or_default();
+
+                    if excluded_dirs.contains(&dir_name) {
+                        continue;
+                    }
+
                     dirs_to_visit.push(path);
                     continue;
                 }
