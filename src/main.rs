@@ -4,11 +4,18 @@ use std::{
     path::PathBuf,
 };
 
-use cloc_rs::collect_files_with_extensions;
+use cloc_rs::{collect_files_with_extensions, is_import_line};
 
 struct Cli {
     pattern: String,
     path: PathBuf,
+}
+
+#[derive(Default)]
+struct LineCounts {
+    total: usize,
+    empty: usize,
+    imports: usize,
 }
 
 fn main() {
@@ -38,18 +45,37 @@ fn main() {
         files_with_ext
     );
 
-    let total_lines: usize = files_with_ext
-        .iter()
-        .filter_map(|path| read_to_string(path).ok())
-        .map(|content| content.lines().count())
-        .sum();
+    let mut counts = LineCounts::default();
 
-    files_with_ext.iter().for_each(|f| {
-        let content = read_to_string(f);
-        if let Ok(text) = content {
-            println!("File with {} lines", text.lines().count())
+    files_with_ext.iter().for_each(|file_path| {
+        if let Ok(text) = read_to_string(file_path) {
+            let extension = file_path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or_default();
+
+            text.lines().for_each(|line| {
+                counts.total += 1;
+                let trimmed = line.trim();
+
+                if trimmed.is_empty() {
+                    counts.empty += 1;
+                } else if is_import_line(extension, trimmed) {
+                    counts.imports += 1;
+                }
+            });
         }
     });
 
-    println!("Total lines of code: {}", total_lines);
+    let lines_without_spaces_and_imports = counts
+        .total
+        .saturating_sub(counts.empty + counts.imports);
+
+    println!("Total lines of code: {}", counts.total);
+    println!("Total empty lines: {}", counts.empty);
+    println!("Total import lines: {}", counts.imports);
+    println!(
+        "Total lines of code minus empty and imports: {}",
+        lines_without_spaces_and_imports
+    );
 }

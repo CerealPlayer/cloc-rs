@@ -1,5 +1,13 @@
 use std::{fs::read_dir, path::{Path, PathBuf}};
 
+pub fn is_import_line(extension: &str, trimmed_line: &str) -> bool {
+    match extension {
+        "rs" => trimmed_line.starts_with("use "),
+        "js" | "ts" => trimmed_line.starts_with("import ") && trimmed_line.contains(" from "),
+        _ => false,
+    }
+}
+
 pub fn collect_files_with_extensions(root: &Path, target_extensions: &[&str]) -> Vec<PathBuf> {
     let mut files = Vec::new();
     let mut dirs_to_visit = vec![root.to_path_buf()];
