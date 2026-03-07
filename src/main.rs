@@ -40,11 +40,6 @@ fn main() {
     let target_extensions: Vec<&str> = args.pattern.split(",").collect();
     let files_with_ext = collect_files_with_extensions(&args.path, &target_extensions);
 
-    println!(
-        "Found the following files with the selected extensions: {:?}",
-        files_with_ext
-    );
-
     let mut counts = LineCounts::default();
 
     files_with_ext.iter().for_each(|file_path| {
