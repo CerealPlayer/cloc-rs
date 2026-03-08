@@ -40,7 +40,7 @@ fn main() {
     let args = AppArgs { path: target_dir };
 
     println!(
-        "Reading lines of code in dir {:?}, excluding {GIT_IGNORE} by default",
+        "Reading lines of code in dir {:?}, excluding {GIT_IGNORE} patterns by default",
         &args.path
     );
 
