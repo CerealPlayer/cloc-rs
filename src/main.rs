@@ -37,12 +37,8 @@ fn main() {
         target_dir.push(p)
     }
 
-    let args = AppArgs {
-        // pattern: cli.pattern,
-        path: target_dir,
-    };
+    let args = AppArgs { path: target_dir };
 
-    // let target_extensions: Vec<&str> = args.pattern.split(",").collect();
     println!(
         "Reading lines of code in dir {:?}, excluding {GIT_IGNORE} by default",
         &args.path
@@ -56,7 +52,6 @@ fn main() {
         Box::new(move |path| {
             if let Ok(dir) = path {
                 if dir.file_type().map_or(false, |ft| ft.is_file()) {
-                    // println!("Sent file to processing list");
                     s.send(dir.into_path()).unwrap();
                 }
             }
@@ -82,12 +77,9 @@ fn main() {
             // println!("Processed file");
             count
         })
-        .reduce(LineCount::default, |a, b| {
-            // println!("Reducing...");
-            LineCount {
-                total: a.total + b.total,
-                empty: a.empty + b.empty,
-            }
+        .reduce(LineCount::default, |a, b| LineCount {
+            total: a.total + b.total,
+            empty: a.empty + b.empty,
         });
 
     println!("Total lines {}", total_count.total);
