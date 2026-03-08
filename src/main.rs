@@ -1,43 +1,31 @@
-use std::{
-    env::current_dir,
-    fs::read_to_string,
-    path::PathBuf,
-};
+use std::{env::current_dir, fs::read_to_string, path::PathBuf};
 
 use clap::Parser;
 
-use cloc_rs::{collect_files_with_extensions, is_import_line};
+use crossbeam_channel::unbounded;
+use ignore::{WalkBuilder, WalkState};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 
 /// Count lines of code by extension.
 #[derive(Parser)]
 #[command(version, about = "Count lines of code by extension")]
 struct Cli {
-    /// Comma-separated file extensions (example: `rs,ts,js`).
-    pattern: String,
-
     /// Target directory to scan.
     ///
     /// If omitted, uses the current working directory.
     path: Option<PathBuf>,
-
-    /// Comma-separated directory names to exclude recursively.
-    ///
-    /// Example: `--exclude node_modules,test`
-    #[arg(long = "exclude", value_delimiter = ',')]
-    exclude: Vec<String>,
 }
+
+const GIT_IGNORE: &str = ".gitignore";
 
 struct AppArgs {
-    pattern: String,
     path: PathBuf,
-    excluded_dirs: Vec<String>,
 }
 
-#[derive(Default)]
-struct LineCounts {
+#[derive(Default, Clone)]
+struct LineCount {
     total: usize,
     empty: usize,
-    imports: usize,
 }
 
 fn main() {
@@ -50,52 +38,58 @@ fn main() {
     }
 
     let args = AppArgs {
-        pattern: cli.pattern,
+        // pattern: cli.pattern,
         path: target_dir,
-        excluded_dirs: cli.exclude,
     };
 
+    // let target_extensions: Vec<&str> = args.pattern.split(",").collect();
     println!(
-        "Reading lines of code for extensions {:?} in dir {:?}",
-        &args.pattern, &args.path
+        "Reading lines of code in dir {:?}, excluding {GIT_IGNORE} by default",
+        &args.path
     );
 
-    let target_extensions: Vec<&str> = args.pattern.split(",").collect();
-    let excluded_dir_refs: Vec<&str> = args.excluded_dirs.iter().map(String::as_str).collect();
-    let files_with_ext =
-        collect_files_with_extensions(&args.path, &target_extensions, &excluded_dir_refs);
+    let walker = WalkBuilder::new(args.path);
+    let (s, r) = unbounded();
 
-    let mut counts = LineCounts::default();
+    walker.build_parallel().run(move || {
+        let s = s.clone();
+        Box::new(move |path| {
+            if let Ok(dir) = path {
+                if dir.file_type().map_or(false, |ft| ft.is_file()) {
+                    // println!("Sent file to processing list");
+                    s.send(dir.into_path()).unwrap();
+                }
+            }
+            WalkState::Continue
+        })
+    });
 
-    files_with_ext.iter().for_each(|file_path| {
-        if let Ok(text) = read_to_string(file_path) {
-            let extension = file_path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .unwrap_or_default();
+    let total_count: LineCount = r
+        .into_iter()
+        .par_bridge()
+        .filter_map(|p| read_to_string(p).ok())
+        .map(|text| {
+            let mut count = LineCount::default();
 
-            text.lines().for_each(|line| {
-                counts.total += 1;
+            for line in text.lines() {
+                count.total += 1;
                 let trimmed = line.trim();
 
                 if trimmed.is_empty() {
-                    counts.empty += 1;
-                } else if is_import_line(extension, trimmed) {
-                    counts.imports += 1;
+                    count.empty += 1;
                 }
-            });
-        }
-    });
+            }
+            // println!("Processed file");
+            count
+        })
+        .reduce(LineCount::default, |a, b| {
+            // println!("Reducing...");
+            LineCount {
+                total: a.total + b.total,
+                empty: a.empty + b.empty,
+            }
+        });
 
-    let lines_without_spaces_and_imports = counts
-        .total
-        .saturating_sub(counts.empty + counts.imports);
-
-    println!("Total lines of code: {}", counts.total);
-    println!("Total empty lines: {}", counts.empty);
-    println!("Total import lines: {}", counts.imports);
-    println!(
-        "Total lines of code minus empty and imports: {}",
-        lines_without_spaces_and_imports
-    );
+    println!("Total lines {}", total_count.total);
+    println!("Empty lines {}", total_count.empty);
 }
