@@ -2,6 +2,8 @@ pub const PATTERNS: &[(&str, LangPatterns)] = &[
     ("js", LangPatterns::JS),
     ("ts", LangPatterns::TS),
     ("rs", LangPatterns::RS),
+    ("html", LangPatterns::HMTL),
+    ("css", LangPatterns::CSS),
 ];
 
 #[derive(Clone, Copy)]
@@ -41,5 +43,17 @@ impl LangPatterns {
         comment_block_start: "/*",
         comment_block_end: "*/",
         import: "use",
+    };
+    const HMTL: LangPatterns = LangPatterns {
+        line_comment: "non defined",
+        comment_block_start: "<!--",
+        comment_block_end: "-->",
+        import: "non defined",
+    };
+    const CSS: LangPatterns = LangPatterns {
+        line_comment: "non defined",
+        comment_block_start: "/*",
+        comment_block_end: "*/",
+        import: "@import",
     };
 }
