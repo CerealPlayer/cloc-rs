@@ -1,48 +1,92 @@
-use std::{fs::read_dir, path::{Path, PathBuf}};
+#[derive(Default)]
+pub struct Count {
+    pub lines: usize,
+    pub empty: usize,
+    pub comments: usize,
+    pub imports: usize,
+}
 
-pub fn is_import_line(extension: &str, trimmed_line: &str) -> bool {
-    match extension {
-        "rs" => trimmed_line.starts_with("use "),
-        "js" | "ts" => trimmed_line.starts_with("import ") && trimmed_line.contains(" from "),
-        _ => false,
+impl Count {
+    pub fn add_count(&mut self, count: &Count) {
+        self.lines += count.lines;
+        self.comments += count.comments;
+        self.empty += count.empty;
+        self.imports += count.imports;
     }
 }
 
-pub fn collect_files_with_extensions(
-    root: &Path,
-    target_extensions: &[&str],
-    excluded_dirs: &[&str],
-) -> Vec<PathBuf> {
-    let mut files = Vec::new();
-    let mut dirs_to_visit = vec![root.to_path_buf()];
+// Static patterns – zero runtime allocation!
+const PATTERNS: &[(&str, LangPatterns)] = &[
+    ("js", LangPatterns::JS),
+    ("ts", LangPatterns::TS),
+    ("rs", LangPatterns::RS),
+];
 
-    while let Some(dir) = dirs_to_visit.pop() {
-        if let Ok(entries) = read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
+#[derive(Clone, Copy, Default)]
+struct LangPatterns {
+    line_comment: &'static str,
+    block_start: &'static str,
+    block_end: &'static str,
+    import: &'static str,
+}
 
-                if path.is_dir() {
-                    let dir_name = path
-                        .file_name()
-                        .and_then(|name| name.to_str())
-                        .unwrap_or_default();
+impl LangPatterns {
+    const JS: LangPatterns = LangPatterns {
+        line_comment: "//",
+        block_start: "/*",
+        block_end: "*/",
+        import: "import",
+    };
+    const TS: LangPatterns = LangPatterns {
+        line_comment: "//",
+        block_start: "/*",
+        block_end: "*/",
+        import: "import",
+    };
+    const RS: LangPatterns = LangPatterns {
+        line_comment: "//",
+        block_start: "/*",
+        block_end: "*/",
+        import: "use",
+    };
+}
 
-                    if excluded_dirs.contains(&dir_name) {
-                        continue;
-                    }
+pub fn process_file(ext: &str, text: String) -> Count {
+    let patterns = PATTERNS
+        .iter()
+        .find(|(e, _)| ext == *e)
+        .map(|(_, p)| *p)
+        .unwrap_or_default(); // or handle NONE
 
-                    dirs_to_visit.push(path);
-                    continue;
-                }
+    let mut count = Count::default();
+    let mut in_block = false;
 
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if target_extensions.contains(&ext) {
-                        files.push(path);
-                    }
-                }
-            }
+    for line in text.lines() {
+        count.lines += 1;
+        let trimmed = line.trim();
+
+        if trimmed.is_empty() {
+            count.empty += 1;
+            continue;
+        }
+
+        if in_block {
+            count.comments += 1;
+        } else if line.contains(patterns.line_comment) {
+            count.comments += 1;
+        } else if line.contains(patterns.import) {
+            count.imports += 1;
+        }
+
+        // Block comments (multi-line aware)
+        if line.contains(patterns.block_start) {
+            in_block = true;
+            count.comments += 1;
+        }
+        if line.contains(patterns.block_end) {
+            in_block = false;
+            count.comments += 1;
         }
     }
-
-    files
+    count
 }
