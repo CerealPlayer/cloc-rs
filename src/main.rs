@@ -1,4 +1,4 @@
-use std::{env::current_dir, fs::read_to_string, path::PathBuf};
+use std::{collections::HashMap, env::current_dir, fs::read_to_string, path::PathBuf};
 
 use clap::Parser;
 
@@ -22,8 +22,16 @@ struct AppArgs {
     path: PathBuf,
 }
 
+#[derive(Default)]
+struct FileCount {
+    extension: String,
+    lines: usize,
+    empty: usize,
+    // comments: usize,
+}
+
 #[derive(Default, Clone)]
-struct LineCount {
+struct Summary {
     total: usize,
     empty: usize,
 }
@@ -59,29 +67,67 @@ fn main() {
         })
     });
 
-    let total_count: LineCount = r
+    let files_counts = r
         .into_iter()
         .par_bridge()
-        .filter_map(|p| read_to_string(p).ok())
-        .map(|text| {
-            let mut count = LineCount::default();
+        .filter_map(|p| {
+            let text = read_to_string(&p).ok();
+            if let Some(t) = text {
+                Some((t, p))
+            } else {
+                None
+            }
+        })
+        .map(|(text, p)| {
+            let mut count = FileCount::default();
+            let extension = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
+            count.extension = String::from(extension);
 
             for line in text.lines() {
-                count.total += 1;
+                count.lines += 1;
                 let trimmed = line.trim();
 
                 if trimmed.is_empty() {
                     count.empty += 1;
                 }
             }
-            // println!("Processed file");
             count
-        })
-        .reduce(LineCount::default, |a, b| LineCount {
-            total: a.total + b.total,
-            empty: a.empty + b.empty,
         });
 
-    println!("Total lines {}", total_count.total);
-    println!("Empty lines {}", total_count.empty);
+    let per_ext: HashMap<String, Summary> = files_counts
+        .fold(
+            || HashMap::new(),
+            |mut local, fc| {
+                let entry: &mut Summary = local.entry(fc.extension).or_default();
+                entry.total += fc.lines;
+                entry.empty += fc.empty;
+                local
+            },
+        )
+        .reduce(
+            || HashMap::new(),
+            |mut a, b| {
+                for (ext, sum_b) in b {
+                    let entry = a.entry(ext).or_default();
+                    entry.total += sum_b.total;
+                    entry.empty += sum_b.empty;
+                }
+                a
+            },
+        );
+
+    let total_summary: Summary = per_ext.values().fold(Summary::default(), |mut acc, s| {
+        acc.total += s.total;
+        acc.empty += s.empty;
+        acc
+    });
+
+    println!(
+        "Total lines of code: {}, total empty lines {}",
+        total_summary.total, total_summary.empty
+    );
+
+    for (ext, s) in &per_ext {
+        println!("{ext}: total lines {}, empty lines {}", s.total, s.empty);
+    }
 }
