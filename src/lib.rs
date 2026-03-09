@@ -22,31 +22,42 @@ const PATTERNS: &[(&str, LangPatterns)] = &[
     ("rs", LangPatterns::RS),
 ];
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 struct LangPatterns {
     line_comment: &'static str,
-    block_start: &'static str,
-    block_end: &'static str,
+    comment_block_start: &'static str,
+    comment_block_end: &'static str,
     import: &'static str,
+}
+
+impl Default for LangPatterns {
+    fn default() -> Self {
+        LangPatterns {
+            line_comment: "unknown",
+            comment_block_start: "unknown",
+            comment_block_end: "unknown",
+            import: "unknown",
+        }
+    }
 }
 
 impl LangPatterns {
     const JS: LangPatterns = LangPatterns {
         line_comment: "//",
-        block_start: "/*",
-        block_end: "*/",
+        comment_block_start: "/*",
+        comment_block_end: "*/",
         import: "import",
     };
     const TS: LangPatterns = LangPatterns {
         line_comment: "//",
-        block_start: "/*",
-        block_end: "*/",
+        comment_block_start: "/*",
+        comment_block_end: "*/",
         import: "import",
     };
     const RS: LangPatterns = LangPatterns {
         line_comment: "//",
-        block_start: "/*",
-        block_end: "*/",
+        comment_block_start: "/*",
+        comment_block_end: "*/",
         import: "use",
     };
 }
@@ -59,7 +70,7 @@ pub fn process_file(ext: &str, text: String) -> Count {
         .unwrap_or_default(); // or handle NONE
 
     let mut count = Count::default();
-    let mut in_block = false;
+    let mut in_comment_block = false;
 
     for line in text.lines() {
         count.lines += 1;
@@ -70,21 +81,21 @@ pub fn process_file(ext: &str, text: String) -> Count {
             continue;
         }
 
-        if in_block {
+        if in_comment_block {
             count.comments += 1;
-        } else if line.contains(patterns.line_comment) {
+        } else if trimmed.starts_with(patterns.line_comment) {
             count.comments += 1;
-        } else if line.contains(patterns.import) {
+        } else if trimmed.starts_with(patterns.import) {
             count.imports += 1;
         }
 
         // Block comments (multi-line aware)
-        if line.contains(patterns.block_start) {
-            in_block = true;
+        if line.contains(patterns.comment_block_start) {
+            in_comment_block = true;
             count.comments += 1;
         }
-        if line.contains(patterns.block_end) {
-            in_block = false;
+        if line.contains(patterns.comment_block_end) {
+            in_comment_block = false;
             count.comments += 1;
         }
     }
