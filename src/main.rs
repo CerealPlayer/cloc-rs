@@ -83,7 +83,11 @@ fn main() {
         .map(|(text, p)| {
             let mut count = FileCount::default();
             let extension = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
-            count.extension = String::from(extension);
+            count.extension = String::from(if extension.is_empty() {
+                "No ext"
+            } else {
+                extension
+            });
 
             for line in text.lines() {
                 count.lines += 1;
