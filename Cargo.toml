@@ -1,6 +1,6 @@
 [package]
 name = "cloc-rs"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "A simple CLI to count lines of code by extension with empty/import filtering"
 license = "MIT"
