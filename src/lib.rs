@@ -1,3 +1,7 @@
+mod patterns;
+
+use patterns::PATTERNS;
+
 #[derive(Default)]
 pub struct Count {
     pub lines: usize,
@@ -13,53 +17,6 @@ impl Count {
         self.empty += count.empty;
         self.imports += count.imports;
     }
-}
-
-// Static patterns – zero runtime allocation!
-const PATTERNS: &[(&str, LangPatterns)] = &[
-    ("js", LangPatterns::JS),
-    ("ts", LangPatterns::TS),
-    ("rs", LangPatterns::RS),
-];
-
-#[derive(Clone, Copy)]
-struct LangPatterns {
-    line_comment: &'static str,
-    comment_block_start: &'static str,
-    comment_block_end: &'static str,
-    import: &'static str,
-}
-
-impl Default for LangPatterns {
-    fn default() -> Self {
-        LangPatterns {
-            line_comment: "unknown",
-            comment_block_start: "unknown",
-            comment_block_end: "unknown",
-            import: "unknown",
-        }
-    }
-}
-
-impl LangPatterns {
-    const JS: LangPatterns = LangPatterns {
-        line_comment: "//",
-        comment_block_start: "/*",
-        comment_block_end: "*/",
-        import: "import",
-    };
-    const TS: LangPatterns = LangPatterns {
-        line_comment: "//",
-        comment_block_start: "/*",
-        comment_block_end: "*/",
-        import: "import",
-    };
-    const RS: LangPatterns = LangPatterns {
-        line_comment: "//",
-        comment_block_start: "/*",
-        comment_block_end: "*/",
-        import: "use",
-    };
 }
 
 pub fn process_file(ext: &str, text: String) -> Count {
@@ -89,7 +46,6 @@ pub fn process_file(ext: &str, text: String) -> Count {
             count.imports += 1;
         }
 
-        // Block comments (multi-line aware)
         if line.contains(patterns.comment_block_start) {
             in_comment_block = true;
             count.comments += 1;
