@@ -6,6 +6,8 @@ use crossbeam_channel::unbounded;
 use ignore::{WalkBuilder, WalkState};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
+use prettytable::{Table, row};
+
 /// Count lines of code by extension.
 #[derive(Parser)]
 #[command(version, about = "Count lines of code by extension")]
@@ -122,12 +124,19 @@ fn main() {
         acc
     });
 
-    println!(
-        "Total lines of code: {}, total empty lines {}",
-        total_summary.total, total_summary.empty
-    );
+    let mut table = Table::new();
 
-    for (ext, s) in &per_ext {
-        println!("{ext}: total lines {}, empty lines {}", s.total, s.empty);
+    // Header
+    table.add_row(row!["Extension", "Lines", "Empty"]);
+
+    // Per extension rows
+    for (ext, s) in per_ext.iter() {
+        table.add_row(row![ext, r->s.total, s.empty]);
     }
+
+    // Global total row
+    table.add_row(row!["TOTAL", r->total_summary.total, total_summary.empty]);
+
+    table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+    table.printstd();
 }
