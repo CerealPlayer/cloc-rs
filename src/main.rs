@@ -109,7 +109,10 @@ fn main() {
     table.add_row(row!["Extension", "Lines", "Empty", "Comments", "Imports"]);
 
     // Per extension rows
-    for (ext, s) in per_ext.iter() {
+    let mut sorted_per_ext: Vec<(&String, &Count)> = per_ext.iter().collect();
+    sorted_per_ext.sort_by(|a, b| b.1.lines.cmp(&a.1.lines));
+
+    for (ext, s) in sorted_per_ext {
         table.add_row(row![if ext.is_empty() { "No ext" } else { ext }, r->s.lines, s.empty, s.comments, s.imports]);
     }
 
