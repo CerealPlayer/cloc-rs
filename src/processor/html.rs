@@ -33,9 +33,8 @@ impl LangProcessor for HtmlProcessor {
                 continue;
             }
 
-            // Simple tag detection (naive but fast)
             if trimmed.starts_with("<!--") {
-                c.comments += 1; // HTML comments
+                c.comments += 1;
                 continue;
             }
 
@@ -45,7 +44,6 @@ impl LangProcessor for HtmlProcessor {
             }
             if trimmed.starts_with("</script>") {
                 self.in_script = false;
-                // Count inline JS
                 c.comments += self.script_processor.count(&buffer).comments;
                 buffer.clear();
                 continue;
@@ -61,12 +59,10 @@ impl LangProcessor for HtmlProcessor {
                 continue;
             }
 
-            // Buffer content for inline script/style
             if self.in_script {
                 buffer.push_str(line);
                 buffer.push('\n');
             } else if self.in_style {
-                // CSS counting below
                 if trimmed.starts_with("/*") || trimmed.starts_with("//") {
                     c.comments += 1;
                 }

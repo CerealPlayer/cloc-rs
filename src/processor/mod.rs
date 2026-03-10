@@ -1,12 +1,18 @@
 use crate::{
     Count,
-    processor::{css::CssProcessor, html::HtmlProcessor, js::JsProcessor, rust::RustProcessor},
+    processor::{
+        css::CssProcessor, html::HtmlProcessor, java::JavaProcessor, js::JsProcessor,
+        kotlin::KotlinProcessor, rust::RustProcessor, yml::YamlProcessor,
+    },
 };
 
 mod css;
 mod html;
+mod java;
 mod js;
+mod kotlin;
 mod rust;
+mod yml;
 
 pub trait LangProcessor {
     fn count(&mut self, text: &str) -> Count;
@@ -40,6 +46,9 @@ pub fn get_processor(ext: &str) -> Box<dyn LangProcessor + Send> {
         "js" | "jsx" | "ts" | "tsx" => Box::new(JsProcessor::new()),
         "html" | "htm" | "xml" => Box::new(HtmlProcessor::new()),
         "css" | "scss" | "less" => Box::new(CssProcessor::new()),
+        "java" => Box::new(JavaProcessor::new()),
+        "yml" | "yaml" => Box::new(YamlProcessor::new()),
+        "kt" => Box::new(KotlinProcessor::new()),
         _ => Box::new(GenericProcessor::new()),
     }
 }

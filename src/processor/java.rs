@@ -1,20 +1,20 @@
 use crate::{Count, processor::LangProcessor};
 
-pub struct JsProcessor {
+pub struct JavaProcessor {
     in_block_comment: bool,
-    in_multi_import: bool,
+    in_javadoc: bool,
 }
 
-impl JsProcessor {
+impl JavaProcessor {
     pub fn new() -> Self {
         Self {
             in_block_comment: false,
-            in_multi_import: false,
+            in_javadoc: false,
         }
     }
 }
 
-impl LangProcessor for JsProcessor {
+impl LangProcessor for JavaProcessor {
     fn count(&mut self, text: &str) -> Count {
         let mut c = Count::default();
 
@@ -27,11 +27,25 @@ impl LangProcessor for JsProcessor {
                 continue;
             }
 
+            if self.in_javadoc {
+                c.comments += 1;
+                if trimmed.contains("*/") {
+                    self.in_javadoc = false;
+                }
+                continue;
+            }
+
             if self.in_block_comment {
                 c.comments += 1;
                 if trimmed.contains("*/") {
                     self.in_block_comment = false;
                 }
+                continue;
+            }
+
+            if trimmed.starts_with("/**") {
+                self.in_javadoc = true;
+                c.comments += 1;
                 continue;
             }
 
@@ -46,13 +60,8 @@ impl LangProcessor for JsProcessor {
                 continue;
             }
 
-            if !self.in_block_comment {
-                if trimmed.starts_with("import ") {
-                    self.in_multi_import = trimmed.contains('{');
-                    c.imports += 1;
-                } else if self.in_multi_import && trimmed.ends_with(';') {
-                    self.in_multi_import = false;
-                }
+            if trimmed.starts_with("import ") && !trimmed.starts_with("import static ") {
+                c.imports += 1;
             }
         }
         c

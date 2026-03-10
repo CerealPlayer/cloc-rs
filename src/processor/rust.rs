@@ -25,7 +25,6 @@ impl LangProcessor for RustProcessor {
                 continue;
             }
 
-            // block comments
             if self.in_block_comment {
                 c.comments += 1;
                 if trimmed.contains("*/") {
@@ -40,13 +39,11 @@ impl LangProcessor for RustProcessor {
                 continue;
             }
 
-            // line comments
             if trimmed.starts_with("//") {
                 c.comments += 1;
                 continue;
             }
 
-            // imports
             if trimmed.starts_with("use ") {
                 c.imports += 1;
             }

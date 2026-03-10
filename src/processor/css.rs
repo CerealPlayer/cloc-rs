@@ -25,7 +25,6 @@ impl LangProcessor for CssProcessor {
                 continue;
             }
 
-            // CSS only has /* */ comments (no //)
             if self.in_block_comment {
                 c.comments += 1;
                 if trimmed.contains("*/") {
@@ -40,7 +39,6 @@ impl LangProcessor for CssProcessor {
                 continue;
             }
 
-            // CSS has no "imports" → count @import rules
             if trimmed.starts_with("@import ") {
                 c.imports += 1;
             }
