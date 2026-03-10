@@ -2,7 +2,7 @@ use std::{collections::HashMap, env::current_dir, fs::read_to_string, path::Path
 
 use clap::Parser;
 
-use cloc_rs::{Count, process_file};
+use cloc_rs::{Count, processor::get_processor};
 use crossbeam_channel::unbounded;
 use ignore::{WalkBuilder, WalkState};
 use rayon::iter::{ParallelBridge, ParallelIterator};
@@ -73,7 +73,8 @@ fn main() {
                 .and_then(|e| e.to_str())
                 .unwrap_or_default()
                 .to_string();
-            let count = process_file(&extension, text);
+            let mut processor = get_processor(&extension);
+            let count = processor.count(&text);
             (extension, count)
         });
 
